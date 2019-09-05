@@ -1,0 +1,10 @@
+
+\.idea/
+
+access_token\.txt
+
+config
+
+venv/
+
+\.vscode/

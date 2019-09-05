@@ -80,22 +80,33 @@ def get_week_datetime():
         return monday, friday
 
 
-session = create_session()
-authenticate_session(session)
+def main():
+    """
+    Main function that is ran on start up. Script is ran from here.
+    """
+    
+    session = create_session()
+    authenticate_session(session)
 
-r = oauth_request(session.con, "https://outlook.office.com/api/v2.0/users/EMAIL/")
+    r = oauth_request(session.con, "https://outlook.office.com/api/v2.0/users/EMAIL/")
 
-# request = account.con.oauth_request("https://outlook.office.com/api/v2.0/users/EMAIL/calendar/events?$filter=Start/DateTime ge '2019-09-04T08:00' AND End/Datetime le '2019-09-05T08:00'&$top=50", "get")
-print(r.text)
+    # request = account.con.oauth_request("https://outlook.office.com/api/v2.0/users/EMAIL/calendar/events?$filter=Start/DateTime ge '2019-09-04T08:00' AND End/Datetime le '2019-09-05T08:00'&$top=50", "get")
+    print(r.text)
 
-# setup csv
-# For loop over all emails
-# API request for user info of email
-# Get display name
-# API request for events this week
-# Find sign of being in or not being in
-# insert name in csv for the days they are in and at what seat (if regular)
+    # setup csv
+    # For loop over all emails
+    # API request for user info of email
+    # Get display name
+    # API request for events this week
+    # Find sign of being in or not being in
+    # insert name in csv for the days they are in and at what seat (if regular)
 
 
-monday, friday = get_week_datetime()
-print(f"Monday is {monday}, Friday is {friday}")
+    monday, friday = get_week_datetime()
+    print(f"Monday is {monday}, Friday is {friday}")
+
+
+
+
+if __name__ == "__main__":
+    main()
