@@ -34,6 +34,8 @@ User.ReadBasic.All
 offline_access
 ```
 
+## Installation
+
 Once the app has been created, git clone this repo, cd into it's folder and install it into your user's Python PATH.
 
 ```sh

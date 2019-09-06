@@ -15,13 +15,14 @@ parser.add_argument("-s", "--client-secret", type=str, required=True, dest='clie
 parser.add_argument("-t", "--tenant-id", type=str, required=True, dest='tenant_id',
                     help='Tenant ID for registered azure application')
 
+# TODO: Setup providing config file via commandline args
 
-def read_config():
+
+def read_config_file():
     """
     Reads config file and sets up variables foo
     :return: credentials: ('client_id', 'client_secret') and tenant: str
     """
-    # TODO: Deprecate this file so we use an arg version instead
     config = configparser.ConfigParser()
     config.read("./config")
 
@@ -48,6 +49,7 @@ def create_session():
         tenant_id=tenant,
         token_backend=token_backend
         )
+
 
 def authenticate_session(session: Account):
     """
