@@ -5,7 +5,9 @@ Script to generate a seating plan via calendar events in an organsation's Office
 
 ## What it does
 
-The script looks at the current week and generates a seating plan for that week. It will then create a csv to represent this. This is done using the default calendar of the user who allows the script access to their account. **Note** Current week is defined during the normal work weeks. If the script is ran on the weekend (Saturday and Sunday) the script will generate next weeks and label it as such.
+The script looks at the current week and generates a seating plan for that week. It will then create a csv to represent this. This is done using the default calendar of the user who allows the script access to their account. 
+
+> **Note** Current week is defined during the normal work weeks. If the script is ran on the weekend (Saturday and Sunday) the script will generate next weeks and label it as such.
 
 ## Pre-Install
 
@@ -36,6 +38,8 @@ offline_access
 
 ## Installation
 
+> **Warning** This guide assumes you are using a UNIX based OS (Linux, Mac OS, etc.). If using Windows, god help you. (Ask me for help if you can't adapt this to Windows. Windows is weird and scary.)
+
 Once the app has been created, git clone this repo, cd into it's folder and install it into your user's Python PATH.
 
 ```sh
@@ -47,9 +51,44 @@ python3 -m pip install . --user
 Once installed, you can run the script like this.
 
 ```sh
-seatingplan -c "CLIENT-ID" -t "TENANT-ID" -s "CLIENT-SECRET"
+seatingplan -c "CLIENT_ID" -t "TENANT_ID" -s "CLIENT_SECRET"
 ```
 
-The first time the script is ran, it will ask you to visit a url. Open the url in your browser and allow the script access to the requested permissions. Once you have done that, you will be redirected to a blank page. Copy the URL and paste it into the console and press enter. **Note** You should give access **AS** the account who's calendar is being used to store who's out of office.
+The first time the script is ran, it will ask you to visit a url. Open the url in your browser and allow the script access to the requested permissions. Once you have done that, you will be redirected to a blank page. Copy the URL and paste it into the console and press enter. 
+
+> **Note** You should give access **AS** the account who's calendar is being used to store who's out of office.
 
 This will only need to be done every 90 days.
+
+## Configuration
+
+### ID's and Secrets
+
+Configuration like the `CLIENT_ID`, `CLIENT_SECRET`, etc. can be inputted via the command line or via a config file. A config file might be better over a command line input as this does not expose sensitive information to the stdout of the tty. It also means not remembering this everytime you run the script. Seeing as a client secret can only be viewed once and has to be stored, I recommend the config file for long term use. To create a config file, do the following:
+
+```sh
+touch ~/.config/seatingplan.conf
+```
+
+This should create an empty text file. Open up this file with your text editor of choice and copy and paste this example.
+
+> **Note** If you are trying to find this file in a file browser and cannot find it, ~/.config is a hidden directory and you will need to enable viewing hidden directories and files in your file browser.
+
+```ini
+[client]
+id=CLIENT_ID
+secret=CLIENT_SECRET
+tenant=TENANT_ID
+```
+
+Make sure to replace `CLIENT_ID` etc. with your own client_id of the app you created earlier.
+
+With this file, you now should be able to run the script like this:
+
+```sh 
+seatingplan -c ~/.config/seatingplan.conf
+```
+
+### Output
+
+***ADD ADVICE HERE ABOUT DATETIME FORMATTING AND HOW TO NAME THE OUTPUT CSV HERE WHEN YOU FINISH ALL THAT CODE***
