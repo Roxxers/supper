@@ -37,7 +37,7 @@ offline_access
 
 ## Installation
 
-> **Warning** This guide assumes you are using a UNIX based OS (Linux, Mac OS, etc.). If using Windows, god help you. (Ask me for help if you can't adapt this to Windows. Windows is weird and scary.)
+> **Warning:** This guide assumes you are using a UNIX based OS (Linux, Mac OS, etc.). If using Windows, god help you. (Ask me for help if you can't adapt this to Windows. Windows is weird and scary.)
 
 Once the app has been created, git clone this repo, cd into it's folder and install it into your user's Python PATH.
 
