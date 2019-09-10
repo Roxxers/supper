@@ -41,7 +41,7 @@ def read_config_file(config_path):
 def parse_args():
     """
     Parses arguments from the commandline. 
-    :return: exits or returns (client_id, client_secret) and tenant_id
+    :return: args, a name space with variables you can find out about with the -h flag
     """
     # TODO: Maybe the prints before exit could be a lil better at explaining the error.
     args = parser.parse_args()
@@ -58,10 +58,14 @@ def parse_args():
         exit(1)
     elif using_conf:
         # Read the file provided and return the required config
-        return read_config_file(args.config_path), args.output_path
+        credentials, tenant = read_config_file(args.config_path)
+        args.client_id = credentials[0]
+        args.client_secret = credentials[1]
+        args.tenant_id = tenant
+        return args
     elif using_args:
         # Just grab the config from the command line args
-        return (args.client_id, args.client_secret), args.tenant_id, args.output_path
+        return args
     else:
         # If the code has gotten here, then a config can't be parsed so we must close the program
         print("Cannot login. No config/partial was provided.")
@@ -136,7 +140,7 @@ def get_week_datetime():
 
 
 def create_csv(output_path):
-    with open(output_path, 'w', newline='') as csvfile:
+    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
         fieldnames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         pass
@@ -147,8 +151,8 @@ def main():
     """
     Main function that is ran on start up. Script is ran from here.
     """
-    credentials, tenant_id, output_path = parse_args()
-    session = create_session(credentials, tenant_id)
+    args = parse_args()
+    session = create_session((args.client_id, args.client_secret), args.tenant_id)
     authenticate_session(session)
 
     r = session.con.oauth_request("https://outlook.office.com/api/v2.0/users/{email}/calendar/events", "get")
@@ -166,8 +170,9 @@ def main():
     monday, friday = get_week_datetime()
     print(f"Monday is {monday}, Friday is {friday}")
     
-    create_csv(output_path)
+    create_csv(args.output_path)
 
 
 if __name__ == "__main__":
+    # This is for running the file in testing, rather than installing via pip
     main()
