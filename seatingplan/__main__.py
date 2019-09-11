@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import csv
+import json
 import argparse
 import configparser
 from datetime import datetime, timedelta
@@ -21,8 +22,10 @@ parser.add_argument("-c", "--config", type=str, dest="config_path", default="",
 parser.add_argument("-o", "--output", type=str, dest="output_path", default="Seating Plan.csv",
                     help="Path of the outputted csv file.")
 
-# TODO: Setup providing config file via commandline args
+strftime_pattern = "%Y-%m-%dT%H:%M:%S"
+strptime_pattern = "%Y-%m-%dT%H:%M:%S.%f"
 
+# TODO: Input for staff emails
 
 def read_config_file(config_path):
     """
@@ -116,7 +119,7 @@ def oauth_request(connection: Connection, url: str):
         print(f"Request failed: GET request to {url} failed with {request.status_code} error")
     else:
         return request
-
+    
 
 def get_week_datetime():
     """
@@ -129,20 +132,80 @@ def get_week_datetime():
     weekday = today.weekday()
     # If this script is run during the week
     if weekday <= 4:  # 0 = Monday, 6 = Sunday
-        monday = today - timedelta(days=weekday)  # Monday = 0-0, Friday = 4-4
-        friday = today + timedelta(days=4 - weekday)  # Fri to Fri 4 + (4 - 4), Tues to Fri = 2 + (4 - 2)
+        # - the hour and minutes to get start of the day instead of when the
+        monday = today - timedelta(days=weekday, hours=today.hour, minutes=today.minute)  # Monday = 0-0, Friday = 4-4
+        friday = (today + timedelta(days=4 - weekday)) - timedelta(hours=today.hour, minutes=today.minute) + timedelta(hours=23, minutes=59)
         return monday, friday
-    else:
-        monday = today - timedelta(days=weekday) + timedelta(days=7)  # Monday = 0-0, Friday = 4-4
-        friday = today + timedelta(days=4 - weekday) + timedelta(
-            days=7)  # Fri to Fri 4 + (4 - 4), Tues to Fri = 2 + (4 - 2)
-        return monday, friday
+    
+    # If the date the script is ran on is the weekend, do next week instead
+    monday = monday + timedelta(days=7)  # Monday = 0-0, Friday = 4-4
+    friday = friday + timedelta(days=7)  # Fri to Fri 4 + (4 - 4), Tues to Fri = 2 + (4 - 2)
+    return monday, friday
 
 
-def create_csv(output_path):
-    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-        fieldnames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+def get_event_range(beginning_of_week: datetime, connection: Connection, email: str):
+    base_url = "https://outlook.office.com/api/v2.0/"
+    scope = f"users/{email}/CalendarView"
+    
+    # Create a range of dates for this week so we can catch long events within the search
+    bottom_range = beginning_of_week - timedelta(days=14)
+    top_range = beginning_of_week + timedelta(days=21)
+    
+    # Setup url
+    date_range = "startDateTime={}&endDateTime={}".format(bottom_range.strftime(strftime_pattern), top_range.strftime(strftime_pattern))
+    limit = "$top=150"
+    select = "$select=Subject,Organizer,Start,End,Attendees"
+    
+    url = f"{base_url}{scope}?{date_range}&{select}&{limit}"
+    
+    r = connection.oauth_request(url, "get")
+    
+    return r.json()
+
+
+def get_outofoffice(email: str, connection: Connection):
+    # TODO: Docstrings of new functions
+    # Get month
+    # check for any events that are longer than 1 day that has a start or end point in the month
+    # TODO: Update readme to explain that if an event is longer than a month, it won't be picked up by the script
+    # check if those events happen within the week by checking if the day we are checking is in between the two points of the event
+    # add this to a list of just events happening in this week that are defo a day long or less.
+    
+    monday, friday = get_week_datetime()
+    events = get_event_range(monday, connection, email)
+    events = events["value"]
+    outofoffice = [[], [], [], [], []]
+    # Using a list to take advantage of datetime.weekday instead of dealing with trying to figure out what key to use
+    
+    for event in events:
+        print(event)
+        # removes last char due to microsofts datetime using 7 sigfigs for microseconds, python uses 6
+        start = datetime.strptime(event["Start"]["DateTime"][:-1], strptime_pattern) 
+        end = datetime.strptime(event["End"]["DateTime"][:-1], strptime_pattern)
+        
+        if (end - start) <= timedelta(days=1):
+            # Event is for one day only, check if it starts
+            if monday <= start <= friday:
+                # Event is within the week we are looking at
+                # TODO: Make this so we look for the email and see if its in the list. Then add the found email user's name to the list of people who are not in.
+                outofoffice[start.weekday()].append(event["Subject"])
+        else:
+            # Check if long events cover the days of this week
+            for x, day_array in enumerate(outofoffice.copy()):
+                current_day = monday + timedelta(days=x)
+                if start <= current_day <= end:
+                    # if day is inside of the long event
+                    outofoffice[x].append(event["Subject"])
+    
+    print(outofoffice)
+    return events
+
+
+def create_csv(output_path: str):
+    # maybe input all the names then selectivly remove them based on the events?
+    with open(output_path, 'w', newline='', encoding='utf-8') as fp:
+        fieldnames = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+        writer = csv.DictWriter(fp, fieldnames=fieldnames)
         pass
         # TODO: https://docs.python.org/3.7/library/csv.html#csv.DictWriter Need to finish this when we actually get some data to input.
 
@@ -154,11 +217,9 @@ def main():
     args = parse_args()
     session = create_session((args.client_id, args.client_secret), args.tenant_id)
     authenticate_session(session)
-
-    r = session.con.oauth_request("https://outlook.office.com/api/v2.0/users/{email}/calendar/events", "get")
-
-    # request = account.con.oauth_request("https://outlook.office.com/api/v2.0/users/EMAIL/calendar/events?$filter=Start/DateTime ge '2019-09-04T08:00' AND End/Datetime le '2019-09-05T08:00'&$top=50", "get")
-    print(r.text)
+    # TODO: Add to readme about the 50 event limit
+    
+    r = get_outofoffice("outofoffice@caat.org.uk", session.con)
 
     # setup csv
     # API request events from out of office email
@@ -167,10 +228,6 @@ def main():
         # insert into csv
     # output csv
 
-    monday, friday = get_week_datetime()
-    print(f"Monday is {monday}, Friday is {friday}")
-    
-    create_csv(args.output_path)
 
 
 if __name__ == "__main__":

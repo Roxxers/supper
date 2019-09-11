@@ -5,7 +5,7 @@ Script to generate a seating plan via calendar events in an organsation's Office
 
 ## What it does
 
-The script looks at the current week and generates a seating plan for that week. It will then create a csv to represent this. This is done using the default calendar of the user who allows the script access to their account.
+The script looks at the current week and generates a seating plan for that week. It does this by looking at the email provided by the user, and looking at that emails default calendar. This means it works with a dedicated account that's sole use is to log when people are out of the office. It does this by looking at events listed during that week, and checking who is attending that event. It then logs these people as out of the office for that day and omits them from the normal seating plan of that day.
 
 > **Note:** Current week is defined during the normal work weeks. If the script is ran on the weekend (Saturday and Sunday) the script will generate next weeks and label it as such.
 
