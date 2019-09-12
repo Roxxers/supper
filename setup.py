@@ -14,5 +14,5 @@ setuptools.setup(
     packages=["seatingplan"],
     entry_points={"console_scripts": ["seatingplan=seatingplan.__main__:main"]},
     python_requires=">=3.5",
-    install_requires=("o365==2.0.1, pyyaml==5.1.1")
+    install_requires=("o365==2.0.1", "pyyaml==5.1.1")
 )
