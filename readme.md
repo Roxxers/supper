@@ -59,7 +59,7 @@ Configuration like the `CLIENT_ID`, `CLIENT_SECRET`, etc. need to be inputted in
 touch ~/.config/seatingplan.yaml
 ```
 
-This should create an empty yaml file. Open up this file with your text editor of choice and copy and paste this example.
+This should create an empty yaml file. Open up this file with your text editor of choice and copy and paste this example. 
 
 ```yaml
 client_id: "CLIENT_ID"
@@ -69,9 +69,9 @@ ooo_email: "example@example.com"
 users: ["Bob", "Alice"]
 ```
 
-> **Note:** If you are trying to find this file in a file browser and cannot find it, ~/.config is a hidden directory and you will need to enable viewing hidden directories and files in your file browser.
-
 Replace `CLIENT_ID`, `CLIENT_SECRET`, and `TENANT_ID` with the values from the Azure website we wrote down earlier. Replace `ooo_email` with the email of the calendar that has the out of office events. Replace `users` with a list of all the first names of employee's in your organisation. This is case insensitive but has to be spelt the same as their Office365 accounts.
+
+> **Note:** If you are trying to find this file in a file browser and cannot find it, ~/.config is a hidden directory and you will need to enable viewing hidden directories and files in your file browser.
 
 ### Output (Optional but recommended)
 
