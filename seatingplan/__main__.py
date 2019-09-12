@@ -2,6 +2,7 @@
 
 import csv
 import json
+import yaml
 import argparse
 import configparser
 from datetime import datetime, timedelta
@@ -10,12 +11,6 @@ from O365 import (Account, Connection, FileSystemTokenBackend,
 
 
 parser = argparse.ArgumentParser(prog='seatingplan', description="Script to generate a seating plan via Office365 Calendars")
-parser.add_argument("-i", "--client-id", type=str, dest='client_id', default="",
-                    help='Client ID for registered azure application')
-parser.add_argument("-s", "--client-secret", type=str, dest='client_secret', default="",
-                    help='Client secret for registered azure application')
-parser.add_argument("-t", "--tenant-id", type=str, dest='tenant_id', default="",
-                    help='Tenant ID for registered azure application')
 parser.add_argument("-c", "--config", type=str, dest="config_path", default="",
                     help="Path to a config file to read settings from.")
 # TODO: DATETIME FORMATTING, MAKE THIS AVALIABLE FOR THE OUTPUT PATH SO THAT YOU CAN DO THE COOL SCRIPT THINGS
@@ -30,48 +25,32 @@ strptime_pattern = "%Y-%m-%dT%H:%M:%S.%f"
 def read_config_file(config_path):
     """
     Reads config file and sets up variables foo
-    :return: credentials: ('client_id', 'client_secret') and tenant: str
+    :return: config as a dict
     """
-    config = configparser.ConfigParser()
-    config.read(config_path)
-
-    credentials = (config["client"]["id"], config["client"]["secret"])
-    tenant = config["client"]["tenant"]
-
-    return credentials, tenant
+    with open(config_path, "r") as fp:
+        config = yaml.load(fp)
+    return config
 
 
 def parse_args():
     """
     Parses arguments from the commandline. 
-    :return: args, a name space with variables you can find out about with the -h flag
+    :return: config yaml file as a dict
     """
     # TODO: Maybe the prints before exit could be a lil better at explaining the error.
     args = parser.parse_args()
-    using_args = False
-    using_conf = False
-    if args.client_id and args.tenant_id and args.client_secret:
-        using_args = True
-    if args.config_path:
-        using_conf = True
+
+    # Read the file provided and return the required config
     
-    if using_args and using_conf: 
-        # Using both types of config input. Confusing so dump it
-        print("Cannot use both command-line arguments and config file. Please only use one.")
-        exit(1)
-    elif using_conf:
-        # Read the file provided and return the required config
-        credentials, tenant = read_config_file(args.config_path)
-        args.client_id = credentials[0]
-        args.client_secret = credentials[1]
-        args.tenant_id = tenant
-        return args
-    elif using_args:
-        # Just grab the config from the command line args
-        return args
+    if args.config_path:
+        config = read_config_file(args.config_path)
+        config["output_path"] = args.output_path or "./Seating Plan.csv"  # Create a default seating plan | I could do this in argparser tbh
+        config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
+        return config
+
     else:
         # If the code has gotten here, then a config can't be parsed so we must close the program
-        print("Cannot login. No config/partial was provided.")
+        print("Cannot login. No config file was provided.")
         exit(1)
 
 
@@ -133,8 +112,9 @@ def get_week_datetime():
     # If this script is run during the week
     if weekday <= 4:  # 0 = Monday, 6 = Sunday
         # - the hour and minutes to get start of the day instead of when the
-        monday = today - timedelta(days=weekday, hours=today.hour, minutes=today.minute)  # Monday = 0-0, Friday = 4-4
-        friday = (today + timedelta(days=4 - weekday)) - timedelta(hours=today.hour, minutes=today.minute) + timedelta(hours=23, minutes=59)
+        extra_time = timedelta(hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond)
+        monday = today - timedelta(days=weekday) - extra_time  # Monday = 0-0, Friday = 4-4
+        friday = (today + timedelta(days=4 - weekday)) - extra_time + timedelta(hours=23, minutes=59)
         return monday, friday
     
     # If the date the script is ran on is the weekend, do next week instead
@@ -157,13 +137,20 @@ def get_event_range(beginning_of_week: datetime, connection: Connection, email: 
     select = "$select=Subject,Organizer,Start,End,Attendees"
     
     url = f"{base_url}{scope}?{date_range}&{select}&{limit}"
-    
     r = connection.oauth_request(url, "get")
     
     return r.json()
 
 
-def get_outofoffice(email: str, connection: Connection):
+def add_attendees_to_ooo_list(attendees: list, ooo_list: list):
+    for attendee in attendees:
+        attendee_name = attendee["EmailAddress"]["Name"].split(" ")[0]  # Get first name
+        if attendee_name not in ooo_list.copy():
+            ooo_list.append(attendee_name.lower())
+    return ooo_list
+
+
+def get_ooo_list(email: str, connection: Connection):
     # TODO: Docstrings of new functions
     # Get month
     # check for any events that are longer than 1 day that has a start or end point in the month
@@ -176,58 +163,64 @@ def get_outofoffice(email: str, connection: Connection):
     events = events["value"]
     outofoffice = [[], [], [], [], []]
     # Using a list to take advantage of datetime.weekday instead of dealing with trying to figure out what key to use
-    
+
     for event in events:
-        print(event)
         # removes last char due to microsofts datetime using 7 sigfigs for microseconds, python uses 6
         start = datetime.strptime(event["Start"]["DateTime"][:-1], strptime_pattern) 
         end = datetime.strptime(event["End"]["DateTime"][:-1], strptime_pattern)
+        attendees = event["Attendees"]
+        # excluding outofoffice account
+        attendees = [x for x in attendees if x["EmailAddress"]["Address"] != email]
+        organizer = event["Organizer"]
         
+        if not attendees and organizer["EmailAddress"]["Address"] != email:
+            # Sometimes user will be the one who makes the event, not the outofoffice account. Get the organizer.
+            attendees = [event["Organizer"]]
+            
         if (end - start) <= timedelta(days=1):
             # Event is for one day only, check if it starts
             if monday <= start <= friday:
-                # Event is within the week we are looking at
-                # TODO: Make this so we look for the email and see if its in the list. Then add the found email user's name to the list of people who are not in.
-                outofoffice[start.weekday()].append(event["Subject"])
+                # Event is within the week we are looking at, add all attendees +
+                weekday = outofoffice[start.weekday()]
+                weekday = add_attendees_to_ooo_list(attendees, weekday)
+
         else:
             # Check if long events cover the days of this week
             for x, day_array in enumerate(outofoffice.copy()):
                 current_day = monday + timedelta(days=x)
                 if start <= current_day <= end:
                     # if day is inside of the long event
-                    outofoffice[x].append(event["Subject"])
+                    outofoffice[x] = add_attendees_to_ooo_list(attendees, day_array)
     
-    print(outofoffice)
-    return events
+    return outofoffice
 
 
-def create_csv(output_path: str):
+def create_csv(ooo: list, users: list, output_path: str):
     # maybe input all the names then selectivly remove them based on the events?
     with open(output_path, 'w', newline='', encoding='utf-8') as fp:
         fieldnames = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
         writer = csv.DictWriter(fp, fieldnames=fieldnames)
-        pass
-        # TODO: https://docs.python.org/3.7/library/csv.html#csv.DictWriter Need to finish this when we actually get some data to input.
+        writer.writeheader()
+        for user in users:
+            row = {}
+            for i, day in enumerate(fieldnames):
+                if user not in ooo[i]:
+                    row[day] = user
+                else:
+                    row[day] = ""
+            writer.writerow(row)
 
 
 def main():
     """
     Main function that is ran on start up. Script is ran from here.
     """
-    args = parse_args()
-    session = create_session((args.client_id, args.client_secret), args.tenant_id)
+    config = parse_args()
+    session = create_session((config["client_id"], config["client_secret"]), config["tenant_id"])
     authenticate_session(session)
-    # TODO: Add to readme about the 50 event limit
     
-    r = get_outofoffice("outofoffice@caat.org.uk", session.con)
-
-    # setup csv
-    # API request events from out of office email
-    # loop over events
-        # find out who the event is talking about
-        # insert into csv
-    # output csv
-
+    ooo = get_ooo_list(config["ooo_email"], session.con)
+    create_csv(ooo, config["users"], config["output_path"])
 
 
 if __name__ == "__main__":
