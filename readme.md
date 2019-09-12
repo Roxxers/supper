@@ -75,7 +75,25 @@ Replace `CLIENT_ID`, `CLIENT_SECRET`, and `TENANT_ID` with the values from the A
 
 ### Output (Optional but recommended)
 
-***ADD ADVICE HERE ABOUT DATETIME FORMATTING AND HOW TO NAME THE OUTPUT CSV HERE WHEN YOU FINISH ALL THAT CODE***
+You can configure the output path too. Normally, the script will output a file called `Seating Plan.csv` in the directory you ran the script in. This can be edited with the `-o` flag. We can put the file in a different folder and have a different name like this:
+
+```sh
+seatingplan -c ~/.config/seatingplan.yaml -o "/path/to/file"
+```
+
+For example, we can generate a csv in our users Documents folder and name it "Who's in office?"
+
+```sh
+seatingplan -c ~/.config/seatingplan.yaml -o "~/Documents/Who's in office" # If you don't provide a .csv file extension, it will be added for you.
+```
+
+This also supports datetime formatting. This can be done using Python's formatting codes for datetime [which you can find the docs for here.](https://docs.python.org/3.7/library/datetime.html#strftime-and-strptime-behavior) The datetime provided to this function will be the datetime when the script it run. 
+
+```sh
+seatingplan -c ~/.config/seatingplan.yaml -o "Seating Plan {:%Y-%m-%d}"
+```
+
+This will output a file called `Seating Plan 2019-09-12.csv`
 
 ## Running the program
 

@@ -33,6 +33,23 @@ def read_config_file(config_path):
     return config
 
 
+def format_output_path(output_path):
+    """
+    Checks the string for datetime formatting and formats it if possible.
+    
+    :param output_path: str of the output path
+    :return: str of the new output path
+    """
+    try:
+        new_path = output_path.format(datetime.now())
+        if new_path.split(".")[-1] != "csv":
+            new_path += ".csv"
+        return new_path
+    except SyntaxError:
+        print("Invalid formatting pattern given for output_path. Cannot name output_path. Exiting...")
+        exit(1)
+    
+
 def parse_args():
     """
     Parses arguments from the commandline. 
@@ -40,18 +57,20 @@ def parse_args():
     :return: config yaml file as a dict
     """
     args = parser.parse_args()
+    
+    output_path = format_output_path(args.output_path)
 
     if args.config_path:
         # Read the file provided and return the required config
         config = read_config_file(args.config_path)
         config["config_path"] = args.config_path
-        config["output_path"] = args.output_path
+        config["output_path"] = output_path
         config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
         return config
 
     else:
         # If the code has gotten here, then a config can't be parsed so we must close the program
-        print("Cannot login. No config file was provided.")
+        print("Cannot login. No config file was provided. Exiting...")
         exit(1)
 
 
@@ -180,9 +199,9 @@ def get_ooo_list(email: str, connection: Connection):
             attendees = [event["Organizer"]]
             
         if (end - start) <= timedelta(days=1):
-            # Event is for one day only, check if it starts
+            # Event is for one day only, check if it starts within the week
             if monday <= start <= friday:
-                # Event is within the week we are looking at, add all attendees +
+                # Event is within the week we are looking at, add all attendees
                 weekday = outofoffice[start.weekday()]
                 weekday = add_attendees_to_ooo_list(attendees, weekday)
         else:
