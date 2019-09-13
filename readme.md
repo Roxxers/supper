@@ -1,11 +1,11 @@
 
-# Seating Plan Generator
+# Supper
 
 Script to generate a seating plan via calendar events in an organisation's Office365.
 
 ## What it does
 
-The script looks at the current week and generates a seating plan for that week. By getting the calendar of a dedicated room or account, it can see who will be out of the office during the week. It then creates a CSV of who will be in the office on the 5 days of the week.
+Supper looks at the current week and generates a seating plan for that week. By getting the calendar of a dedicated room or account, it can see who will be out of the office during the week. It then creates a CSV of who will be in the office on the 5 days of the week.
 
 > **Note:** Current week is defined during the normal workweeks. If the script is run on the weekend (Saturday and Sunday) the script will generate next weeks and label it as such.
 
@@ -43,7 +43,7 @@ Once the app has been created, git clone this repo, cd into its folder and insta
 
 ```sh
 git clone URL
-cd seatplangen
+cd supper
 python3 -m pip install . --user
 ```
 
@@ -53,10 +53,10 @@ This installs the script to your Python user bin.
 
 ### ID's and Secrets
 
-Configuration like the `CLIENT_ID`, `CLIENT_SECRET`, etc need to be inputted into a config file. Let's create one in the user config folder.
+Now we need to create a config file. This will store all the values we wrote down when creating our application (id, secret, tenant). It will also include some other information that is required to run Supper. This needs to be created by you. Let's create one in the user config folder. This is where Supper will look for a config file by default.
 
 ```sh
-touch ~/.config/seatingplan.yaml
+touch ~/.config/supper.yaml
 ```
 
 This should create an empty YAML file. Open up this file with your text editor of choice and copy and paste this example.
@@ -73,42 +73,57 @@ Replace `CLIENT_ID`, `CLIENT_SECRET`, and `TENANT_ID` with the values from the A
 
 > **Note:** If you are trying to find this file in a file browser and cannot find it, ~/.config is a hidden directory and you will need to enable viewing hidden directories and files in your file browser.
 
-### Output (Optional but recommended)
-
-You can configure the output path too. Normally, the script will output a file called `Seating Plan.csv` in the directory you ran the script in. This can be edited with the `-o` flag. We can put the file in a different folder and have a different name like this:
-
-```sh
-seatingplan -c ~/.config/seatingplan.yaml -o "/path/to/file"
-```
-
-For example, we can generate a CSV in our user's Documents folder and name it "Who's in office?"
-
-```sh
-seatingplan -c ~/.config/seatingplan.yaml -o "~/Documents/Who's in office" # If you don't provide a .csv file extension, it will be added for you.
-```
-
-This also supports datetime formatting. This can be done using Python's formatting codes for datetime [which you can find the docs for here.](https://docs.python.org/3.7/library/datetime.html#strftime-and-strptime-behavior) When the script is executed, the datetime provided in the string will be set using `datetime.now()`
-
-```sh
-seatingplan -c ~/.config/seatingplan.yaml -o "Seating Plan {:%Y-%m-%d}"
-```
-
-This will output a file called `Seating Plan 2019-09-12.csv`
-
 ## Running the program
 
 Now we have configured everything, we can now run the script. To run the script, enter this inside of the terminal.
 
 ```sh
-seatingplan -c ~/.config/seatingplan.yaml
+supper
 ```
 
-This will generate a `Seating Plan.csv` file in the directory you ran this program. Look at [Output](#Output) to see how to configure the file name of the output.
+This will generate a `Seating Plan.csv` file in the directory you ran this program. Look at [Output](#output-recommended) to see how to configure the file name of the output.
 
 The first time the script is ran, it will ask you to visit a url. Open the url in your browser and allow the script access to the requested permissions. Once you have done that, you will be redirected to a blank page. Copy the URL and paste it into the console and press enter.
 
 > **Note:** You should login as a user with *full* permissions to the out of office calendar. This is to ensure the script has permissions to view this calendar in full. This will only need to be done every 90 days.
 
+## Command Arguments
+
+### Config
+
+If you want to store the config file in a different directory than the default (`/home/$USER/.config/supper.yaml`), you can provide the location of the config file using the `--config` or `-c` flag.
+
+```sh
+supper -c ~/.supper.yaml
+```
+
+### Output (Recommended)
+
+You can configure the output path too. Normally, the script will output a file called `Seating Plan.csv` in the directory you ran the script in. This can be edited with the `--output` or `-o` flag. We can put the file in a different folder and have a different name like this:
+
+```sh
+supper -c ~/.config/supper.yaml -o "/path/to/file"
+```
+
+For example, we can generate a CSV in our user's Documents folder and name it "Who's in office?"
+
+```sh
+supper -c ~/.config/supper.yaml -o "~/Documents/Who's in office" # If you don't provide a .csv file extension, it will be added for you.
+```
+
+This also supports datetime formatting. This can be done using Python's formatting codes for datetime [which you can find the docs for here.](https://docs.python.org/3.7/library/datetime.html#strftime-and-strptime-behavior) When the script is executed, the datetime provided in the string will be set using `datetime.now()`
+
+```sh
+supper -c ~/.config/supper.yaml -o "Seating Plan {:%Y-%m-%d}.csv"
+```
+
+This will output a file called `Seating Plan 2019-09-12.csv`
+
+### Debug
+
+You can enable debug output using the `-d` or `--debug` flags
+
 ## Known Issues
 
 - Long events (longer than a month) may not get picked up in the script as their start dates and end dates may not be in reach of the programs search range.
+- Users who do not add themselves as attendees or are not the organisers of their out of office event will not be removed from the output CSV seating plan. This is logged as warnings in the console to make you aware of these events.

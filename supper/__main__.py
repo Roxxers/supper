@@ -14,11 +14,11 @@ from O365 import (Account, Connection, FileSystemTokenBackend,
                   MSOffice365Protocol)
 
 
-parser = argparse.ArgumentParser(prog='seatingplan', description="Script to generate a seating plan via Office365 Calendars")
-parser.add_argument("-c", "--config", type=str, dest="config_path", default="",
-                    help="Path to a config file to read settings from.")
+parser = argparse.ArgumentParser(prog='supper', description="Script to generate a seating plan via Office365 Calendars")
+parser.add_argument("-c", "--config", type=str, dest="config_path", default="~/.config/supper.yaml",
+                    help="Path to a config file to read settings from. Default: ~/.config/supper.yaml")
 parser.add_argument("-o", "--output", type=str, dest="output_path", default="Seating Plan.csv",
-                    help="Path of the outputted csv file.")
+                    help="Path to save the output csv file to")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output")
 
 
@@ -27,7 +27,7 @@ strptime_pattern = "%Y-%m-%dT%H:%M:%S.%f"
 access_token = f"{dirname(realpath(__file__))}/access_token"
 
 
-logger = logging.getLogger('seatingplan')
+logger = logging.getLogger('supper')
 consoleHandler = logging.StreamHandler()
 logger.addHandler(consoleHandler)
 
