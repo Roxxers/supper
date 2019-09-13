@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import os
 import csv
 import json
 import yaml
+import logging
 import argparse
 import configparser
-from os.path import abspath, dirname, realpath
+from os.path import abspath, dirname, realpath, isfile
+from requests import HTTPError
 from datetime import datetime, timedelta
 from O365 import (Account, Connection, FileSystemTokenBackend,
                   MSOffice365Protocol)
@@ -14,12 +17,22 @@ from O365 import (Account, Connection, FileSystemTokenBackend,
 parser = argparse.ArgumentParser(prog='seatingplan', description="Script to generate a seating plan via Office365 Calendars")
 parser.add_argument("-c", "--config", type=str, dest="config_path", default="",
                     help="Path to a config file to read settings from.")
-# TODO: DATETIME FORMATTING, MAKE THIS AVALIABLE FOR THE OUTPUT PATH SO THAT YOU CAN DO THE COOL SCRIPT THINGS
 parser.add_argument("-o", "--output", type=str, dest="output_path", default="Seating Plan.csv",
                     help="Path of the outputted csv file.")
+parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output")
+
 
 strftime_pattern = "%Y-%m-%dT%H:%M:%S"
 strptime_pattern = "%Y-%m-%dT%H:%M:%S.%f"
+access_token = f"{dirname(realpath(__file__))}/access_token"
+
+
+logger = logging.getLogger('seatingplan')
+consoleHandler = logging.StreamHandler()
+logger.addHandler(consoleHandler)
+
+formatter = logging.Formatter('%(levelname)s: %(asctime)s - %(message)s')
+consoleHandler.setFormatter(formatter)
 
 
 def read_config_file(config_path):
@@ -44,9 +57,12 @@ def format_output_path(output_path):
         new_path = output_path.format(datetime.now())
         if new_path.split(".")[-1] != "csv":
             new_path += ".csv"
+            logger.info("Output path does NOT have '.csv' file extension. Adding '.csv' to end of output_path.")
+        logger.debug("Formatted output file successfully as '{}'".format(new_path))
         return new_path
-    except SyntaxError:
-        print("Invalid formatting pattern given for output_path. Cannot name output_path. Exiting...")
+    except (SyntaxError, KeyError):
+        # This is raised when formatting is incorrectly used in naming the output
+        logger.error("Invalid formatting pattern given for output_path. Cannot name output_path. Exiting...")
         exit(1)
     
 
@@ -58,19 +74,36 @@ def parse_args():
     """
     args = parser.parse_args()
     
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        consoleHandler.setLevel(logging.DEBUG)
+    else: 
+        logger.setLevel(logging.WARNING)
+        consoleHandler.setLevel(logging.WARNING)
+    
     output_path = format_output_path(args.output_path)
 
     if args.config_path:
         # Read the file provided and return the required config
-        config = read_config_file(args.config_path)
-        config["config_path"] = args.config_path
-        config["output_path"] = output_path
-        config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
-        return config
-
+        try:
+            config = read_config_file(args.config_path)
+            config["config_path"] = args.config_path
+            config["output_path"] = output_path
+            config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
+            logger.debug("Loaded config successfully from '{}'".format(access_token))
+            return config
+        except FileNotFoundError:
+            # Cannot open file
+            logger.error("Cannot find config file provided. Maybe you mistyped it? Exiting...")
+            exit(1)
+        except (yaml.parser.ParserError, TypeError):
+            # Cannot parse opened file
+            # TypeError is sometimes raised if the metadata of the file is correct but the content doesn't parse
+            logger.error("Cannot parse config file. Make sure the provided config is a YAML file and that is is formatted correctly. Exiting...")
+            exit(1)
     else:
-        # If the code has gotten here, then a config can't be parsed so we must close the program
-        print("Cannot login. No config file was provided. Exiting...")
+        # No provided -c argument
+        logger.error("Cannot login. No config file was provided. Exiting...")
         exit(1)
 
 
@@ -83,12 +116,13 @@ def create_session(credentials, tenant_id):
     :return: Account class and email: str
     """
     my_protocol = MSOffice365Protocol(api_version='v2.0') 
-    token_backend = FileSystemTokenBackend(token_filename=f"{dirname(realpath(__file__))}/access_token") # Put access token where the file is so it can always access it.
+    token_backend = FileSystemTokenBackend(token_filename=access_token) # Put access token where the file is so it can always access it.
     return Account(
         credentials, 
         protocol=my_protocol,
         tenant_id=tenant_id,
-        token_backend=token_backend
+        token_backend=token_backend,
+        raise_http_error=False
         )
 
 
@@ -97,13 +131,27 @@ def authenticate_session(session: Account):
     Authenticates account session object with oauth. Uses the default auth flow that comes with the library
     
     :param session: Account object
-    :return:
+    :return: Bool for if the client is authenticated
     """
-    try:
-        session.con.oauth_request("https://outlook.office.com/api/v2.0/me/calendar", "get")
-    except RuntimeError:  # Not authenticated. Need to ask user for url
-        session.authenticate(scopes=['basic', 'address_book', 'users', 'calendar_shared'])
-        session.con.oauth_request("https://outlook.office.com/api/v2.0/me/calendar", "get")
+    if not isfile(f"{dirname(realpath(__file__))}/access_token"):
+        try:
+            session.authenticate(scopes=['basic', 'address_book', 'users', 'calendar_shared'])
+            session.con.oauth_request("https://outlook.office.com/api/v2.0/me/", "get")
+            logger.debug("Successfully tested new access_token")
+            return True
+        except:
+            os.remove(access_token)
+            logger.error("Could not authenticate. Please make sure the config has the correct client_id, client_secret, etc. Exiting...")
+            exit(1)
+    else:
+        try:
+            session.con.oauth_request("https://outlook.office.com/api/v2.0/me/", "get")
+            logger.debug("Successfully tested current access_token")
+            return True
+        except:
+            os.remove(access_token)
+            logger.warning("Failed to authenticate with current access_token. Deleting access_token and running authentication again.")
+            return False
 
 
 def get_week_datetime():
@@ -151,8 +199,8 @@ def get_event_range(beginning_of_week: datetime, connection: Connection, email: 
     select = "$select=Subject,Organizer,Start,End,Attendees"
     
     url = f"{base_url}{scope}?{date_range}&{select}&{limit}"
-    r = connection.oauth_request(url, "get")
     
+    r = connection.oauth_request(url, "get")
     return r.json()
 
 
@@ -180,7 +228,12 @@ def get_ooo_list(email: str, connection: Connection):
     :return: list of 5 lists representing a 5 day list. Each list contains the lowercase names of who is not in the office.
     """
     monday, friday = get_week_datetime()
-    events = get_event_range(monday, connection, email)
+    try:
+        events = get_event_range(monday, connection, email)
+        logger.debug("Received response for two week range from week beginning with {:%Y-%m-%d} from outofoffice account with email: {}".format(monday, email))
+    except HTTPError as e:
+        logger.error("Could not request CalendarView | {}".format(e.response))
+        exit(1)
     
     events = events["value"]
     outofoffice = [[], [], [], [], []]
@@ -203,6 +256,8 @@ def get_ooo_list(email: str, connection: Connection):
             if monday <= start <= friday:
                 # Event is within the week we are looking at, add all attendees
                 weekday = outofoffice[start.weekday()]
+                if not attendees:
+                    logger.warning("Event '{}' has no attendees. Cannot add to outofoffice list.".format(event["Subject"]))
                 weekday = add_attendees_to_ooo_list(attendees, weekday)
         else:
             # Check if long events cover the days of this week
@@ -211,6 +266,7 @@ def get_ooo_list(email: str, connection: Connection):
                 if start <= current_day <= end:
                     # if day is inside of the long event
                     outofoffice[x] = add_attendees_to_ooo_list(attendees, day_array)
+    logger.debug("Parsed events and successfuly created out of office list.")
     return outofoffice
 
 
@@ -235,6 +291,7 @@ def create_ooo_csv(ooo: list, users: list, output_path: str):
                 else:
                     row[day] = ""
             writer.writerow(row)
+    logger.debug("Created csv file.")
 
 
 def main():
@@ -251,11 +308,16 @@ def main():
     email = config["ooo_email"]
     
     session = create_session((client_id, client_secret), tenant_id)
-    authenticate_session(session)
+    auth = False
+    while not auth:
+        auth = authenticate_session(session)
+    
+    logger.debug("Session created and authenticated. {}".format(session))
     
     ooo = get_ooo_list(email, session.con)
     create_ooo_csv(ooo, users, output_path)
-    print("Created {}".format(abspath(output_path)))
+    monday, friday = get_week_datetime()
+    print("\nCreated CSV seating plan for week {:%a %d/%m/%Y} to {:%a %d/%m/%Y} at {}".format(monday, friday, abspath(output_path)))
 
 
 if __name__ == "__main__":
