@@ -9,6 +9,15 @@ Supper looks at the current week and generates a seating plan for that week. By 
 
 > **Note:** Current week is defined during the normal workweeks. If the script is run on the weekend (Saturday and Sunday) the script will generate next weeks and label it as such.
 
+## Requirements
+
+Supper requires:
+
+- Python 3.5 <=
+- Admin access to an Org's Office365
+
+> **Warning:** This guide assumes you are using a UNIX based OS (Linux, Mac OS, etc.). If using Windows, god help you.
+
 ## Pre-Install
 
 To setup the script, you will need to create an app in your organisation Azure Active Directory. You can find the app registration page [here](hhttps://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps).
@@ -37,7 +46,7 @@ offline_access
 
 ## Installation
 
-> **Warning:** This guide assumes you are using a UNIX based OS (Linux, Mac OS, etc.). If using Windows, god help you. (Ask me for help if you can't adapt this to Windows. Windows is weird and scary.)
+
 
 Once the app has been created, git clone this repo, cd into its folder and install it into your user's Python PATH.
 
