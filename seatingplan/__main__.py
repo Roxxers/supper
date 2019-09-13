@@ -206,7 +206,7 @@ def get_event_range(beginning_of_week: datetime, connection: Connection, email: 
 
 def add_attendees_to_ooo_list(attendees: list, ooo_list: list):
     """
-    Function to aid the adding of attendees in a list to the list of people who will be out of offce.
+    Function to aid the adding of attendees in a list to the list of people who will be out of office.
     
     :param attendees: list of attendees to event
     :param ooo_list: list of the current days out of office users
@@ -266,7 +266,7 @@ def get_ooo_list(email: str, connection: Connection):
                 if start <= current_day <= end:
                     # if day is inside of the long event
                     outofoffice[x] = add_attendees_to_ooo_list(attendees, day_array)
-    logger.debug("Parsed events and successfuly created out of office list.")
+    logger.debug("Parsed events and successfully created out of office list.")
     return outofoffice
 
 
