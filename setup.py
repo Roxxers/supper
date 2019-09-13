@@ -1,6 +1,11 @@
+
+import sys
 import setuptools
 
-# TODO: This needs to generate a config and make sure it is installed
+
+if sys.version_info < (3, 5):
+    sys.exit('Python 3.5 is required to run Supper')
+
 
 LONG_DESC = open('readme.md').read()
 
