@@ -7,6 +7,7 @@ import yaml
 import logging
 import argparse
 import configparser
+from pathlib import Path
 from os.path import abspath, dirname, realpath, isfile
 from requests import HTTPError
 from datetime import datetime, timedelta
@@ -15,7 +16,7 @@ from O365 import (Account, Connection, FileSystemTokenBackend,
 
 
 parser = argparse.ArgumentParser(prog='supper', description="Script to generate a seating plan via Office365 Calendars")
-parser.add_argument("-c", "--config", type=str, dest="config_path", default="~/.config/supper.yaml",
+parser.add_argument("-c", "--config", type=str, dest="config_path", default="{}/.config/supper.yaml".format(Path.home()),
                     help="Path to a config file to read settings from. Default: ~/.config/supper.yaml")
 parser.add_argument("-o", "--output", type=str, dest="output_path", default="Seating Plan.csv",
                     help="Path to save the output csv file to")
@@ -90,11 +91,11 @@ def parse_args():
             config["config_path"] = args.config_path
             config["output_path"] = output_path
             config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
-            logger.debug("Loaded config successfully from '{}'".format(access_token))
+            logger.debug("Loaded config successfully from '{}'".format(args.config_path))
             return config
         except FileNotFoundError:
             # Cannot open file
-            logger.error("Cannot find config file provided. Maybe you mistyped it? Exiting...")
+            logger.error("Cannot find config file provided ({}). Maybe you mistyped it? Exiting...".format(args.config_path))
             exit(1)
         except (yaml.parser.ParserError, TypeError):
             # Cannot parse opened file
