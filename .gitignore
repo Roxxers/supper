@@ -5,8 +5,10 @@ access_token\.txt
 
 access_token
 
-config
+config*
 
 venv/
 
 \.vscode/
+
+*.csv
