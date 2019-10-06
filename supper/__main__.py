@@ -179,12 +179,13 @@ def get_week_datetime():
     """
     today = datetime.now()
     weekday = today.weekday()
+    extra_time = timedelta(hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond)
+    monday = today - timedelta(days=weekday) - extra_time  # Monday = 0-0, Friday = 4-4
+    friday = (today + timedelta(days=4 - weekday)) - extra_time + timedelta(hours=23, minutes=59)
+
     # If this script is run during the week
     if weekday <= 4:  # 0 = Monday, 6 = Sunday
         # - the hour and minutes to get start of the day instead of when the
-        extra_time = timedelta(hours=today.hour, minutes=today.minute, seconds=today.second, microseconds=today.microsecond)
-        monday = today - timedelta(days=weekday) - extra_time  # Monday = 0-0, Friday = 4-4
-        friday = (today + timedelta(days=4 - weekday)) - extra_time + timedelta(hours=23, minutes=59)
         return monday, friday
     
     # If the date the script is ran on is the weekend, do next week instead
