@@ -48,6 +48,8 @@ parser.add_argument(
 )
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output")
 
+# TODO: Add new argument, n amount of future weeks. Then pass this onto the request which handles it
+
 
 def read_config_file(config_path):
     """
@@ -112,16 +114,13 @@ def parse_args():
             exit(1)
         except (yaml.parser.ParserError, TypeError):
             # Cannot parse opened file
-            # TypeError is sometimes raised if the metadata of the file is correct but the content doesn't parse
+            # TypeError is sometimes raised if the metadata of the file is correct but content doesn't parse
             LOG.error("Cannot parse config file. Make sure the provided config is a YAML file and that is is formatted correctly. Exiting...")
             exit(1)
     else:
         # No provided -c argument
         LOG.error("Cannot login. No config file was provided. Exiting...")
         exit(1)
-
-
-
 
 
 def create_ooo_csv(ooo: list, users: list, output_path: str):
