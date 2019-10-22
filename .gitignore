@@ -9,6 +9,4 @@ config*
 
 venv/
 
-\.vscode/
-
 *.csv

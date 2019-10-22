@@ -1,0 +1,25 @@
+{
+    "python.pythonPath": "venv/bin/python3",
+    "spellright.language": [
+        "english-uk"
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext"
+    ],
+    "cSpell.ignoreWords": [
+        "kz",
+        "m",
+        "organsation",
+        "vdbd"
+    ],
+    "cSpell.words": [
+        "caat",
+        "outofoffice",
+        "pattern",
+        "seatingplan",
+        "seatplangen",
+        "strftime"
+    ]
+}
