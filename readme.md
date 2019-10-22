@@ -136,3 +136,4 @@ You can enable debug output using the `-d` or `--debug` flags
 
 - Long events (longer than a month) may not get picked up in the script as their start dates and end dates may not be in reach of the programs search range.
 - Users who do not add themselves as attendees or are not the organisers of their out of office event will not be removed from the output CSV seating plan. This is logged as warnings in the console to make you aware of these events.
+- Access tokens are added where the source code is. This might cause issues if the user installs the script as root. Users should use the `--user` tag when installing
