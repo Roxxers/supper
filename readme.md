@@ -128,10 +128,10 @@ This will output a file called `Seating Plan 2019-09-12.csv`
 
 ### Multiple Weeks
 
-The script can output multiple weeks in advance. You can provide a number of weeks in advance with the -w or --weeks flag.
+The script can output multiple weeks in advance. You can provide a number of weeks in advance with the `-w` or `--weeks` flag.
 
 ```sh
-supper -w 2 # Creates three csv's. This weeks, and two weeks in advance.
+supper -w 2 # Creates three csv's. This week's, and two weeks in advance.
 ```
 
 If datetime formatting is provided for the filename, it will give the correct datetime for that files week. Otherwise "_x" will be provided to make sure the script doesn't overwrite itself.
