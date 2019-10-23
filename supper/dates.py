@@ -16,7 +16,9 @@
 
 from datetime import datetime, timedelta
 
-def get_week_datetime(start: datetime = None):
+from . import LOG
+
+def get_week_datetime(start: int = 0):
     """
     Gets the current week's Monday and Friday to be used to filter a calendar.
 
@@ -26,10 +28,10 @@ def get_week_datetime(start: datetime = None):
     :param start: Specifies the today variable, used for make future weeks if given.
     :return: Monday and Friday: Datetime objects
     """
-    if start:
-        today = start
-    else:
-        today = datetime.now()
+    today = datetime.now() + timedelta(weeks=start)
+
+    if start > 5:
+        LOG.warning("Extra weeks exceeds 5, script may run slowly.")
 
     weekday = today.weekday()
     extra_time = timedelta(

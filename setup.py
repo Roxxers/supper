@@ -34,6 +34,6 @@ setuptools.setup(
     entry_points={"console_scripts": ["supper=supper.__main__:main"]},
     python_requires=">=3.5",
     install_requires=("o365==2.0.1", "pyyaml==5.1.1"),
-    version="1.0",
+    version="1.1.0",
     license="GPL-3"
 )

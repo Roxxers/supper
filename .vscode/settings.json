@@ -15,11 +15,14 @@
         "vdbd"
     ],
     "cSpell.words": [
+        "Org's",
         "caat",
+        "organisers",
         "outofoffice",
         "pattern",
         "seatingplan",
         "seatplangen",
         "strftime"
-    ]
+    ],
+    "python.linting.pylintEnabled": true
 }

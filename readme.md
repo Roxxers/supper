@@ -46,8 +46,6 @@ offline_access
 
 ## Installation
 
-
-
 Once the app has been created, git clone this repo, cd into its folder and install it into your user's Python PATH.
 
 ```sh
@@ -127,6 +125,43 @@ supper -c ~/.config/supper.yaml -o "Seating Plan {:%Y-%m-%d}.csv"
 ```
 
 This will output a file called `Seating Plan 2019-09-12.csv`
+
+### Multiple Weeks
+
+The script can output multiple weeks in advance. You can provide a number of weeks in advance with the -w or --weeks flag.
+
+```sh
+supper -w 2 # Creates three csv's. This weeks, and two weeks in advance.
+```
+
+If datetime formatting is provided for the filename, it will give the correct datetime for that files week. Otherwise "_x" will be provided to make sure the script doesn't overwrite itself.
+
+#### Examples
+
+```sh
+supper -o "Seating Plan {:%Y-%m-%d}.csv" -w 2
+```
+
+Will create 3 files named
+
+```
+Seating Plan 2019-10-21.csv
+Seating Plan 2019-10-28.csv
+Seating Plan 2019-11-04.csv
+```
+---
+
+```sh
+supper -o "Seating Plan.csv" -w 2
+```
+
+Will create 3 files named
+
+```
+Seating Plan.csv
+Seating Plan_1.csv
+Seating Plan_2.csv
+```
 
 ### Debug
 

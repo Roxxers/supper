@@ -48,10 +48,10 @@ parser.add_argument(
 )
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug output")
 
-# TODO: Add new argument, n amount of future weeks. Then pass this onto the request which handles it
+parser.add_argument("-w", "--weeks", type=int, default=0, dest="weeks_extra", help="Number of weeks to add extra to the current week")
 
 
-def read_config_file(config_path):
+def read_config_file(config_path: str):
     """
     Reads config file and sets up variables foo
 
@@ -62,7 +62,7 @@ def read_config_file(config_path):
     return config
 
 
-def format_output_path(output_path):
+def format_output_path(output_path: str, date: datetime):
     """
     Checks the string for datetime formatting and formats it if possible.
 
@@ -70,7 +70,7 @@ def format_output_path(output_path):
     :return: str of the new output path
     """
     try:
-        new_path = output_path.format(datetime.now())
+        new_path = output_path.format(date)
         if new_path.split(".")[-1] != "csv":
             new_path += ".csv"
             LOG.info("Output path does NOT have '.csv' file extension. Adding '.csv' to end of output_path.")
@@ -97,15 +97,15 @@ def parse_args():
         LOG.setLevel(logging.WARNING)
         HANDLER.setLevel(logging.WARNING)
 
-    output_path = format_output_path(args.output_path)
-
     if args.config_path:
         # Read the file provided and return the required config
         try:
             config = read_config_file(args.config_path)
+            config["weeks_extra"] = args.weeks_extra
             config["config_path"] = args.config_path
-            config["output_path"] = output_path
-            config["users"] = sorted([x.lower() for x in config["users"]])  # make all names lowercase and sort alphabetically
+            config["output_path"] = args.output_path # Needs formatting
+            # make all names lowercase and sort alphabetically
+            config["users"] = sorted([x.lower() for x in config["users"]])
             LOG.debug("Loaded config successfully from '%s'", args.config_path)
             return config
         except FileNotFoundError:
@@ -114,7 +114,7 @@ def parse_args():
             exit(1)
         except (yaml.parser.ParserError, TypeError):
             # Cannot parse opened file
-            # TypeError is sometimes raised if the metadata of the file is correct but content doesn't parse
+            # TypeError is raised if the metadata of the file is correct but content doesn't parse
             LOG.error("Cannot parse config file. Make sure the provided config is a YAML file and that is is formatted correctly. Exiting...")
             exit(1)
     else:
@@ -167,10 +167,25 @@ def main():
 
     LOG.debug("Session created and authenticated. %s", session)
 
-    ooo = session.get_ooo_list(email)
-    create_ooo_csv(ooo, users, output_path)
-    monday, friday = dates.get_week_datetime()
-    print("\nCreated CSV seating plan for week {:%a %d/%m/%Y} to {:%a %d/%m/%Y} at {}".format(monday, friday, abspath(output_path)))
+    filenames = []
+    for i in range(config["weeks_extra"] + 1):
+        ooo = session.get_ooo_list(email, i)
+        monday, friday = dates.get_week_datetime(i)
+        output_filename = format_output_path(output_path, monday)
+        # Check if filename is the same
+        if output_filename in filenames:
+            # Add number to end of filename to avoid overwrites
+            path, ext = output_filename.split(".")
+            output_filename = ".".join([path + f"_{i}", ext])
+        filenames.append(output_filename)
+
+        create_ooo_csv(ooo, users, output_filename)
+
+        print(
+            "Created CSV seating plan for week {:%a %d/%m/%Y} to {:%a %d/%m/%Y} at {}".format(
+                monday, friday, abspath(output_filename)
+            )
+        )
 
 
 if __name__ == "__main__":

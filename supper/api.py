@@ -26,6 +26,7 @@ from . import ACCESS_TOKEN, STRFTIME, STRPTIME, LOG, dates
 
 class Account(O365.Account):
     """Wrapper for the O365 Account class to add our api interactions"""
+
     @classmethod
     def create_session(cls, credentials, tenant_id):
         """
@@ -75,10 +76,9 @@ class Account(O365.Account):
 
     def get_event_range(self, beginning_of_week: datetime, email: str):
         """
-        Makes api call to grab a calender view within a 2 week window either side of the current week.
+        Makes call to grab calender view within a 2 week window either side of the current week.
 
         :param beginning_of_week: datetime object for this weeks monday
-        :param connection: a connection to the office365 api
         :return: dict of json response
         """
         base_url = "https://outlook.office.com/api/v2.0/"
@@ -97,15 +97,15 @@ class Account(O365.Account):
         resp = self.con.oauth_request(url, "get")
         return resp.json()
 
-    def get_ooo_list(self, email: str):
+    def get_ooo_list(self, email: str, week_no: int):
         """
         Makes request and parses data into a list of users who will not be in the office
 
         :param email: string of the outofoffice email where the out of office calender is located
-        :param connection: a connection to the office365 api
+        :param week_no: week number. 1 = Current week, n > 1 = current week + n weeks
         :return: list of 5 lists representing 5 days. Each contains lowercase names of who is not in the office.
         """
-        monday, friday = dates.get_week_datetime()
+        monday, friday = dates.get_week_datetime(week_no)
         try:
             events = self.get_event_range(monday, email)
             LOG.debug("Received response for two week range from week beginning with {:%Y-%m-%d} from outofoffice account with email: {}".format(monday, email))
@@ -117,7 +117,8 @@ class Account(O365.Account):
         outofoffice = [[], [], [], [], []]
 
         for event in events:
-            # removes last char due to microsoft's datetime using 7 sigfigs for microseconds, python uses 6
+            # removes last char due to microsoft's datetime using 7 digits
+            # for microseconds, python uses 6
             start = datetime.strptime(event["Start"]["DateTime"][:-1], STRPTIME)
             end = datetime.strptime(event["End"]["DateTime"][:-1], STRPTIME)
             attendees = event["Attendees"]
@@ -126,7 +127,7 @@ class Account(O365.Account):
             organizer = event["Organizer"]
 
             if not attendees and organizer["EmailAddress"]["Address"] != email:
-                # Sometimes user will be the one who makes the event, not the outofoffice account. Get the organizer.
+                # Sometimes user will be the one who makes the event. Get the organizer.
                 attendees = [event["Organizer"]]
 
             if (end - start) <= timedelta(days=1):
@@ -135,7 +136,10 @@ class Account(O365.Account):
                     # Event is within the week we are looking at, add all attendees
                     weekday = outofoffice[start.weekday()]
                     if not attendees:
-                        LOG.warning("Event '%s' has no attendees. Cannot add to outofoffice list.", event["Subject"])
+                        LOG.warning(
+                            "Event '%s' has no attendees. Cannot add to outofoffice list.",
+                            event["Subject"]
+                        )
                     weekday = self.add_attendees_to_ooo_list(attendees, weekday)
             else:
                 # Check if long events cover the days of this week
