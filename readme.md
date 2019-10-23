@@ -118,7 +118,7 @@ For example, we can generate a CSV in our user's Documents folder and name it "W
 supper -c ~/.config/supper.yaml -o "~/Documents/Who's in office" # If you don't provide a .csv file extension, it will be added for you.
 ```
 
-This also supports datetime formatting. This can be done using Python's formatting codes for datetime [which you can find the docs for here.](https://docs.python.org/3.7/library/datetime.html#strftime-and-strptime-behavior) When the script is executed, the datetime provided in the string will be set using `datetime.now()`
+This also supports datetime formatting. This can be done using Python's formatting codes for datetime [which you can find the docs for here.](https://docs.python.org/3.7/library/datetime.html#strftime-and-strptime-behavior) When the script is executed, the datetime provided in the string will be set using the start of the weeks date (Monday).
 
 ```sh
 supper -c ~/.config/supper.yaml -o "Seating Plan {:%Y-%m-%d}.csv"
